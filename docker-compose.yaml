@@ -8,7 +8,7 @@ services:
       - "8080:8080"
     environment:
       NOTES_SERVER_PORT: 8080
-      NOTES_DB_HOST: localhost
+      NOTES_DB_HOST: host.docker.internal
       NOTES_DB_PORT: 5432
       NOTES_DB_NAME: notes-db
       NOTES_DB_USERNAME: postgres
