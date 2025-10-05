@@ -1,2 +1,3 @@
 .env
 specific-config.txt
+/db-backup

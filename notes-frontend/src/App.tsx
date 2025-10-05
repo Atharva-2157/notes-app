@@ -1,124 +1,227 @@
-import { useEffect, useState } from "react";
-import axios from "axios";
-import "./App.css";
+import { useEffect, useState } from 'react';
+import axios from 'axios';
+import {
+	Container, TextField, Button, Grid, Typography, Box,
+	CircularProgress, Alert, Switch, FormControlLabel,
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import WbSunnyIcon from '@mui/icons-material/WbSunny';
+import ModeNightIcon from '@mui/icons-material/ModeNight';
+import NoteCard from './components/NoteCard';
+import { useThemeContext } from './ThemeContextProvider'; // Import the context hook
 
 interface Note {
-  id: number;
-  title: string;
-  content: string;
+	id: number;
+	title: string;
+	content: string;
 }
 
 function App() {
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [newNote, setNewNote] = useState<Omit<Note, "id">>({ title: "", content: "" });
-  const [editingNote, setEditingNote] = useState<Note | null>(null);
+	const { mode, toggleTheme } = useThemeContext();
+	const [notes, setNotes] = useState<Note[]>([]);
+	const [newNote, setNewNote] = useState<Omit<Note, 'id'>>({ title: '', content: '' });
+	const [editingNote, setEditingNote] = useState<Note | null>(null);
+	const [isLoading, setIsLoading] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 
-  const fetchNotes = async () => {
-    try {
-      const res = await axios.get(`/api/notes/`);
-      setNotes(res.data.data);
-    } catch (err) {
-      console.error("Error fetching notes", err);
-    }
-  };
+	const fetchNotes = async () => {
+		setIsLoading(true);
+		setError(null);
+		try {
+			const res = await axios.get(`/api/notes/`);
+			setNotes(res.data.data);
+		} catch (err) {
+			console.error('Error fetching notes', err);
+			setError('Failed to fetch notes. Please check the backend connection.');
+		} finally {
+			setIsLoading(false);
+		}
+	};
 
-  useEffect(() => {
-    fetchNotes();
-  }, []);
+	useEffect(() => {
+		fetchNotes();
+	}, []);
 
-  const addNote = async () => {
-    try {
-      await axios.post(`/api/notes/`, newNote);
-      setNewNote({ title: "", content: "" });
-      fetchNotes();
-    } catch (err) {
-      console.error("Error adding note", err);
-    }
-  };
+	const addNote = async () => {
+		if (!newNote.title.trim() || !newNote.content.trim()) {
+			alert('Title and content cannot be empty.');
+			return;
+		}
+		try {
+			setIsLoading(true);
+			await axios.post(`/api/notes/`, newNote);
+			setNewNote({ title: '', content: '' });
+			fetchNotes();
+		} catch (err) {
+			console.error('Error adding note', err);
+			setError('Failed to add the note.');
+		}
+	};
 
-  const updateNote = async (id: number) => {
-    if (!editingNote) return;
-    try {
-      await axios.put(`/api/notes/${id}`, editingNote);
-      setEditingNote(null);
-      fetchNotes();
-    } catch (err) {
-      console.error("Error updating note", err);
-    }
-  };
+	const updateNote = async (id: number) => {
+		if (!editingNote || !editingNote.title.trim() || !editingNote.content.trim()) {
+			alert('Title and content cannot be empty.');
+			return;
+		}
+		try {
+			setIsLoading(true);
+			await axios.put(`/api/notes/${id}`, editingNote);
+			setEditingNote(null);
+			fetchNotes();
+		} catch (err) {
+			console.error('Error updating note', err);
+			setError('Failed to update the note.');
+		}
+	};
 
-  const deleteNote = async (id: number) => {
-    try {
-      await axios.delete(`/api/notes/${id}`);
-      fetchNotes();
-    } catch (err) {
-      console.error("Error deleting note", err);
-    }
-  };
+	const deleteNote = async (id: number) => {
+		if (window.confirm('Are you sure you want to delete this note?')) {
+			try {
+				setIsLoading(true);
+				await axios.delete(`/api/notes/${id}`);
+				fetchNotes();
+			} catch (err) {
+				console.error('Error deleting note', err);
+				setError('Failed to delete the note.');
+			}
+		}
+	};
 
-  return (
-    <div className="app-container">
-      <header>
-        <h1>📒 Notes App</h1>
-      </header>
+	const renderAddNoteForm = () => (
+		<Box
+			component="section"
+			sx={{
+				mb: 4,
+				p: 3,
+				borderRadius: 2,
+				boxShadow: 3,
+				bgcolor: 'background.paper',
+				borderLeft: '5px solid',
+				borderColor: 'primary.main',
+			}}
+		>
+			<Typography variant="h5" component="h2" gutterBottom color="primary">
+				Add a Note 📝
+			</Typography>
+			<Grid container spacing={2}>
+				<Grid size={{ xs: 12 }}>
+					<TextField
+						fullWidth
+						label="Title"
+						variant="outlined"
+						value={newNote.title}
+						onChange={(e) => setNewNote({ ...newNote, title: e.target.value })}
+						margin="normal"
+						color="primary"
+					/>
+				</Grid>
+				<Grid size={{ xs: 12 }}>
+					<TextField
+						fullWidth
+						label="Content"
+						multiline
+						rows={4}
+						variant="outlined"
+						value={newNote.content}
+						onChange={(e) => setNewNote({ ...newNote, content: e.target.value })}
+						margin="normal"
+						color="primary"
+					/>
+				</Grid>
+				<Grid size={{ xs: 12 }}>
+					<Button
+						variant="contained"
+						onClick={addNote}
+						startIcon={<AddIcon />}
+						sx={{ mt: 1 }}
+						disabled={isLoading}
+						color="secondary"
+					>
+						Add Note
+					</Button>
+				</Grid>
+			</Grid>
+		</Box>
+	);
 
-      {/* Add Note */}
-      <section className="add-note">
-        <h2>Add a Note</h2>
-        <input
-          type="text"
-          placeholder="Enter title..."
-          value={newNote.title}
-          onChange={(e) => setNewNote({ ...newNote, title: e.target.value })}
-        />
-        <textarea
-          placeholder="Write your content here..."
-          value={newNote.content}
-          onChange={(e) => setNewNote({ ...newNote, content: e.target.value })}
-        />
-        <button onClick={addNote}>➕ Add Note</button>
-      </section>
+	const renderNotesList = () => (
+		<Box component="section" sx={{ mb: 4 }}>
+			<Typography variant="h4" component="h2" gutterBottom sx={{ color: 'primary.main', mb: 3 }}>
+				All Notes 📚
+			</Typography>
 
-      {/* Notes List */}
-      <section className="notes-list">
-        <h2>All Notes</h2>
-        {notes.length === 0 ? (
-          <p className="empty">No notes yet...</p>
-        ) : (
-          notes.map((note) => (
-            <div key={note.id} className="note-card">
-              {editingNote?.id === note.id ? (
-                <>
-                  <input
-                    type="text"
-                    value={editingNote.title}
-                    onChange={(e) => setEditingNote({ ...editingNote, title: e.target.value })}
-                  />
-                  <textarea
-                    value={editingNote.content}
-                    onChange={(e) => setEditingNote({ ...editingNote, content: e.target.value })}
-                  />
-                  <div className="actions">
-                    <button className="save" onClick={() => updateNote(note.id)}>💾 Save</button>
-                    <button className="cancel" onClick={() => setEditingNote(null)}>✖ Cancel</button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <h3>{note.title}</h3>
-                  <p>{note.content}</p>
-                  <div className="actions">
-                    <button className="edit" onClick={() => setEditingNote(note)}>✏ Edit</button>
-                    <button className="delete" onClick={() => deleteNote(note.id)}>🗑 Delete</button>
-                  </div>
-                </>
-              )}
-            </div>
-          ))
-        )}
-      </section>
-    </div>
-  );
+			{error && (
+				<Alert severity="error" sx={{ mb: 2 }}>
+					{error}
+				</Alert>
+			)}
+
+			{isLoading && notes.length === 0 ? (
+				<Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+					<CircularProgress color="primary" />
+				</Box>
+			) : notes.length === 0 ? (
+				<Typography variant="body1" sx={{ fontStyle: 'italic', color: 'text.secondary', p: 2 }}>
+					No notes yet... Get started by adding one!
+				</Typography>
+			) : (
+				<Grid container spacing={3}>
+					{notes.map((note) => (
+						<NoteCard
+							key={note.id}
+							note={note}
+							editingNote={editingNote}
+							setEditingNote={setEditingNote}
+							updateNote={updateNote}
+							deleteNote={deleteNote}
+							isLoading={isLoading}
+						/>
+					))}
+				</Grid>
+			)}
+		</Box>
+	);
+
+	return (
+		<Container maxWidth="lg" sx={{ pt: 4, pb: 4 }}>
+			<header>
+				<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 5 }}>
+					<Typography
+						variant="h3"
+						component="h1"
+						sx={{ fontWeight: 'bold', color: 'primary.main' }}
+					>
+						Notes App
+					</Typography>
+
+					<FormControlLabel
+						control={
+							<Switch
+								checked={mode === 'dark'}
+								onChange={toggleTheme}
+								color="default"
+							/>
+						}
+						label={
+							<Box sx={{ display: 'flex', alignItems: 'center' }}>
+								{mode === 'light' ? (
+									<WbSunnyIcon color="warning" sx={{ mr: 0.5 }} />
+								) : (
+									<ModeNightIcon color="primary" sx={{ mr: 0.5 }} />
+								)}
+								<Typography variant="body1">
+									{mode === 'light' ? 'Light Mode' : 'Dark Mode'}
+								</Typography>
+							</Box>
+						}
+					/>
+				</Box>
+			</header>
+
+			{renderAddNoteForm()}
+			{renderNotesList()}
+		</Container>
+	);
 }
 
 export default App;
